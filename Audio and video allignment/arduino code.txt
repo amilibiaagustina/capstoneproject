@@ -1,0 +1,51 @@
+#include <arduino-timer.h>
+uint32_t count;
+Timer<1, micros> timer;
+int trigger_pin = 13;
+byte arr[4];
+unsigned long myTime;
+
+
+bool send_trigger_sync_to_pcb(void *) {
+  digitalWrite(trigger_pin, HIGH);
+
+  byte bytesToSend[5]; // Create an array to store the 5 bytes
+  // Split the 32-bit integer into 5 bytes, each carrying 7 bits
+  for (int i = 0; i < 5; i++) {
+    // Shift right by 7 bits times the index and mask out the lower 7 bits
+    bytesToSend[i] = (count >> (7 * i)) & 0x7F;
+  }
+  //Send each byte over serial
+  for (int i = 0; i < 5; i++) {
+    Serial1.write(bytesToSend[i]);
+    Serial2.write(bytesToSend[i]);
+    Serial3.write(bytesToSend[i]);
+    Serial1.flush();
+    Serial2.flush();
+    Serial3.flush();
+  }
+  digitalWrite(trigger_pin, LOW);
+  count = count + 1;
+  return true;
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial1.begin(9600);
+  Serial2.begin(115200);
+  Serial3.begin(115200);
+  // put your setup code here, to run once:
+  pinMode(trigger_pin, OUTPUT);
+  timer.every(33333.333333333, send_trigger_sync_to_pcb); //33333.333333333
+  count = 0;//4284957296;
+  Serial.println("Timer, Serial_ID, Pulse_State");
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  timer.tick();
+  myTime = millis();
+  Serial.print(myTime);
+  Serial.print(",");
+  Serial.println(count);
+}
